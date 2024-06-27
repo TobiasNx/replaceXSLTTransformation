@@ -1,3 +1,19 @@
+do put_macro("arrayCounter")
+  unless exists("$[arrayIndexName]")
+    set_array("$[arrayIndexName]")
+  end
+  add_field("$[arrayIndexName].$append","Counter")
+  set_array("@pos")
+	copy_field("$[arrayIndexName]", "@pos.$append")
+	count("@pos")
+end
+
+copy_field("header.identifier","oai_id")
+copy_field("oai_id","dmd_id")
+replace_all("dmd_id",".*\\.de:(.*)","md$1")
+copy_field("metadata.mets:mets.mets:structMap.*.mets:div.@DMDID","rel_dmd_id")
+
+
 copy_field("metadata.oai_dc:dc","mets:dmdSec.mets:mdWrap.mets:xmlData.dc:record")
 add_field("mets:dmdSec.mets:mdWrap.@MDTYPE","DC")
 
@@ -50,19 +66,13 @@ set_array("mets:fileSec")
 set_array("identifier_index")
 
 do list(path: "mets:dmdSec.mets:mdWrap.mets:xmlData.dc:record.dc:identifier", "var": "$i")
-  # keep track of items (globally)
-  copy_field("$i", "identifier_index.$append")
-	
+	call_macro("arrayCounter",arrayIndexName:"identifierIndex")
 	if any_contain("$i.value","https://pub.uni-bielefeld.de/download")
 		copy_field("$i.value", "mets:fileSec.$append.mets:fileGrp.mets:file.mets:FLocat.@xlink:href")
 		add_field("mets:fileSec.$last.mets:fileGrp.mets:file.mets:FLocat.@LOCTYPE","URL")
 		add_field("mets:fileSec.$last.mets:fileGrp.@USE","VIEW")
 		add_field("mets:fileSec.$last.mets:fileGrp.@ID","rep1")
-  # determine current count (locally)
-  	copy_field("identifier_index", "$i.pos")
-  	count("$i.pos")
-		paste("mets:fileSec.$last.mets:fileGrp.mets:file.@ID", "~fid","$i.pos","~-1", join_char:"")
-		remove_field("$i.pos")
+		paste("mets:fileSec.$last.mets:fileGrp.mets:file.@ID", "~fid","@pos","~-1", join_char:"")
 	end
 end
 

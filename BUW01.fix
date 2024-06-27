@@ -97,19 +97,22 @@ copy_field("$[modsInputPath].mods:accessCondition.@xlink:href","$[dcPath].dc:rec
 # Restructure record
 
 set_array("mets:amdSec")
-move_field("metadata.mets:mets.mets:amdSec","mets:sourceMD.mets:mdWrap.mets:xmlData.mets:amdSec")
 
 # amdSec: ie-amd
 add_field("mets:amdSec.$append.@ID","ie-amd")
+move_field("metadata.mets:mets.mets:amdSec","mets:amdSec.$last.mets:sourceMD.mets:mdWrap.mets:xmlData.mets:amdSec")
+add_field("mets:amdSec.$last.mets:sourceMD.@ID","ie-amd-source-MODS")
 add_field("mets:amdSec.$last.mets:sourceMD.mets:mdWrap.@MDTYPE","MODS")
 move_field("metadata.mets:mets.mets:dmdSec","mets:amdSec.$last.mets:sourceMD.mets:mdWrap.mets:xmlData.mets:dmdSec")
 move_field("metadata.mets:mets.mets:dmdSec","mets:amdSec.$last.mets:sourceMD.mets:mdWrap.mets:xmlData.mets:dmdSec")
-
 
 add_field("mets:amdSec.$last.mets:rightsMD.@ID","ie-amd-rights")
 add_field("mets:amdSec.$last.mets:rightsMD.mets:mdWrap.@MDTYPE","OTHER")
 add_field("mets:amdSec.$last.mets:rightsMD.mets:mdWrap.@OTHERMDTYPE","dnx")
 add_field("mets:amdSec.$last.mets:rightsMD.mets:mdWrap.mets:xmlData.dnx.section.@id","accessRightsPolicy")
+
+# amdSec: ie-amd
+add_field("mets:amdSec.$append.@ID","dummi")
 
 retain("mets*")
 
