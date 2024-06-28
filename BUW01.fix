@@ -1,5 +1,24 @@
+# Transformation preparation
+# Macro to provide 1-base array index position
+do put_macro("arrayCounter")
+  unless exists("$[arrayIndexName]")
+    set_array("$[arrayIndexName]")
+  end
+  add_field("$[arrayIndexName].$append","Counter")
+  set_array("$[arrayIndexPos]")
+	copy_field("$[arrayIndexName]", "$[arrayIndexPos].$append")
+	count("$[arrayIndexPos]")
+end
+
+# Variable
 put_var("modsInputPath","metadata.mets:mets.mets:dmdSec.mets:mdWrap.mets:xmlData.mods:mods")
 put_var("dcPath","mets:dmdSec.mets:mdWrap.mets:xmlData")
+
+# Helper Elements
+copy_field("header.identifier","oai_id")
+# copy_field("oai_id","dmd_id")
+# replace_all("dmd_id",".*\\.de:(.*)","md$1")
+# copy_field("metadata.mets:mets.mets:structMap.*.mets:div.@DMDID","rel_dmd_id")
 
 
 ## New dmdSec with DC-Metadata
@@ -100,19 +119,160 @@ set_array("mets:amdSec")
 
 # amdSec: ie-amd
 add_field("mets:amdSec.$append.@ID","ie-amd")
-move_field("metadata.mets:mets.mets:amdSec","mets:amdSec.$last.mets:sourceMD.mets:mdWrap.mets:xmlData.mets:amdSec")
+move_field("metadata.mets:mets.mets:fileSec","oldfileSec")
+move_field("metadata.mets:mets","mets:amdSec.$last.mets:sourceMD.mets:mdWrap.mets:xmlData")
 add_field("mets:amdSec.$last.mets:sourceMD.@ID","ie-amd-source-MODS")
 add_field("mets:amdSec.$last.mets:sourceMD.mets:mdWrap.@MDTYPE","MODS")
-move_field("metadata.mets:mets.mets:dmdSec","mets:amdSec.$last.mets:sourceMD.mets:mdWrap.mets:xmlData.mets:dmdSec")
-move_field("metadata.mets:mets.mets:dmdSec","mets:amdSec.$last.mets:sourceMD.mets:mdWrap.mets:xmlData.mets:dmdSec")
+remove_field("mets:amdSec.$last.mets:sourceMD.mets:mdWrap.mets:xmlData.mets:metsHdr")
+
+
+add_field("mets:amdSec.$last.mets:digiprovMD.@ID","ie-amd-digiprov")
+add_field("mets:amdSec.$last.mets:digiprovMD.mets:mdWrap.@MDTYPE","OTHER")
+add_field("mets:amdSec.$last.mets:digiprovMD.mets:mdWrap.@OTHERMDTYPE","dnx")
+add_field("mets:amdSec.$last.mets:digiprovMD.mets:mdWrap.mets:xmlData.dnx.@xmlns","http://www.exlibrisgroup.com/dps/dnx")
 
 add_field("mets:amdSec.$last.mets:rightsMD.@ID","ie-amd-rights")
 add_field("mets:amdSec.$last.mets:rightsMD.mets:mdWrap.@MDTYPE","OTHER")
 add_field("mets:amdSec.$last.mets:rightsMD.mets:mdWrap.@OTHERMDTYPE","dnx")
 add_field("mets:amdSec.$last.mets:rightsMD.mets:mdWrap.mets:xmlData.dnx.section.@id","accessRightsPolicy")
 
-# amdSec: ie-amd
-add_field("mets:amdSec.$append.@ID","dummi")
+# Apply new fileSec and amdSec for each file(Group)
+do list(path:"oldfileSec.mets:fileGrp", "var":"$fileGrp")
+	call_macro("arrayCounter",arrayIndexName:"representationIndex", arrayIndexPos:"representationPos")
+	paste("mets:amdSec.$append.@ID", "~rep","representationPos","~-amd",join_char:"")
+	paste("mets:amdSec.$last.mets:techMD.@ID", "~rep","representationPos","~-amd","~-tech",join_char:"")	
+	add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.@MDTYPE","OTHER")
+	add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.@OTHERMDTYPE","dnx")
+	add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.@xmlns","http://www.exlibrisgroup.com/dps/dnx")
+	set_array("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section")
+	add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$append.@id","generalRepCharacteristics")
+	set_array("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$append.key")
+	add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$append.@id","representationEntityType")
+	copy_field("$fileGrp.@USE","mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$last.value")
+	add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$append.@id","usageType")
+	add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$last.value","VIEW")
+	add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$append.@id","DigitalOriginal")
+	add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$last.value","false")			
+	if any_equal("$fileGrp.@USE","MASTER")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$append.@id","label")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$last.value","TIFF")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$append.@id","preservationType")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$last.value","PRESERVATION_MASTER")	
+	elsif any_equal("$fileGrp.@USE","DOWNLOAD")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$append.@id","label")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$last.value","PDF")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$append.@id","preservationType")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$last.value","MODIFIED_MASTER")	
+	elsif any_equal("$fileGrp.@USE","FULLTEXT")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$append.@id","label")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$last.value","XML")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$append.@id","preservationType")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$last.value","MODIFIED_MASTER_02")	
+	else
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$append.@id","representationEntityType")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$last.value","UNSPECIFIC")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$append.@id","preservationType")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$last.value","DERIVATIVE_COPY")	
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$append.@id","RepresentationCode")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$last.key.$last.value","MEDIUM")	
+	end
+	do list(path:"$fileGrp.mets:file","var":"$file")
+		call_macro("arrayCounter",arrayIndexName:"fileIndex", arrayIndexPos:"filePos")
+		paste("mets:amdSec.$append.@ID", "~fid","filePos", "~-","representationPos","~-amd",join_char:"")
+		paste("mets:amdSec.$last.mets:techMD.@ID", "~fid","filePos", "~-","representationPos","~-amd","~-tech",join_char:"")	
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.@MDTYPE","OTHER")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.@OTHERMDTYPE","dnx")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.@xmlns","http://www.exlibrisgroup.com/dps/dnx")
+		set_array("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section")
+		add_field("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$append.@id","generalFileCharacteristics")
+		set_array("mets:amdSec.$last.mets:techMD.mets:mdWrap.mets:xmlData.dnx.section.$append.key")
+		if any_equal("$file.@MIMETYPE","application")
+		elsif any_equal("$file.@MIMETYPE","image")
+		elsif any_equal("$file.@MIMETYPE","text")
+#	<xsl:template match="mets:fileSec/mets:fileGrp" mode="file">
+#		<xsl:variable name="representationPos" select="position()"/>
+#		<xsl:for-each select="mets:file">
+#			<xsl:variable name="fileMIMEType" select="./@MIMETYPE"/>
+#			<xsl:variable name="fileFixityType" select="./@CHECKSUMTYPE"/>
+#			<xsl:variable name="fileChecksum" select="./@CHECKSUM"/>
+#			<xsl:variable name="fileName" select="./mets:FLocat/@xlink:href"/>
+#			<xsl:variable name="filePos" select="position()"/>
+#			<xsl:variable name="fileID" select="./@ID"/>
+#			<xsl:variable name="fileSizeBytes" select="./@SIZE"/>
+#			<xsl:variable name="fileCreationDate" select="./@CREATED"/>
+#			<mets:amdSec>
+#				<xsl:attribute name="ID">
+#					<xsl:value-of select="concat(&apos;fid&apos;, $filePos, &apos;-&apos;, $representationPos, &apos;-amd&apos;)"/>
+#				</xsl:attribute>
+#				<mets:techMD>
+#					<xsl:attribute name="ID">
+#						<xsl:value-of select="concat(&apos;fid&apos;, $filePos, &apos;-&apos;, $representationPos, &apos;-amd-tech&apos;)"/>
+#					</xsl:attribute>
+#					<mets:mdWrap MDTYPE="OTHER" OTHERMDTYPE="dnx">
+#						<mets:xmlData>
+#							<dnx xmlns="http://www.exlibrisgroup.com/dps/dnx">
+#								<section id="generalFileCharacteristics">
+#									<record>
+#										<key id="label">
+#											<xsl:choose>
+#												<xsl:when test="$fileMIMEType = &quot;application/pdf&quot;">
+#													<xsl:value-of select="$LabelPDF/PDFLabel[@label=$fileID]"/>
+#												</xsl:when>
+#												<xsl:when test="$fileMIMEType = &quot;image/tiff&quot;">
+#													<xsl:value-of select="$LabelTIFF/TIFFLabel[@label=$fileID]"/>
+#												</xsl:when>
+#												<xsl:when test="$fileMIMEType = &quot;text/xml&quot;">
+#													<xsl:value-of select="$LabelFR/FRLabel[@label=$fileID]"/>
+#												</xsl:when>
+#											</xsl:choose>
+#										</key>
+#										<key id="fileOriginalName">
+#											<xsl:value-of select="$fileName"/>
+#										</key>
+#										<key id="fileMIMEType">
+#											<xsl:value-of select="$fileMIMEType"/>
+#										</key>
+#										<key id="note">
+#											<xsl:value-of select="$fileID"/>
+#										</key>
+#										<xsl:if test="$fileSizeBytes">
+#											<key id="fileSizeBytes">
+#												<xsl:value-of select="$fileSizeBytes"/>
+#											</key>
+#										</xsl:if>
+#										<xsl:if test="$fileCreationDate">
+#											<key id="fileCreationDate">
+#												<xsl:value-of select="$fileCreationDate"/>
+#											</key>
+#										</xsl:if>
+#									</record>
+#								</section>
+#								<xsl:choose>
+#									<xsl:when test="$fileChecksum != &apos;&apos;">
+#										<section id="fileFixity">
+#											<record>
+#												<key id="fixityType">
+#													<xsl:value-of select="$fileFixityType"/>
+#												</key>
+#												<key id="fixityValue">
+#													<xsl:value-of select="$fileChecksum"/>
+#												</key>
+#											</record>
+#										</section>
+#									</xsl:when>
+#								</xsl:choose>
+#							</dnx>
+#						</mets:xmlData>
+#					</mets:mdWrap>
+#				</mets:techMD>
+#			</mets:amdSec>
+#		</xsl:for-each>
+#	</xsl:template>
+	end
+	remove_field("fileIndex")
+end
+
+
 
 retain("mets*")
 
